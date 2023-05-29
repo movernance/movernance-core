@@ -1,0 +1,28 @@
+# https://taskfile.dev
+
+version: "3"
+
+tasks:
+  build:
+    dir: ./packages/movernance
+    cmds:
+      - sui move build
+    sources:
+      - sources/**/*.move
+      - Move.toml
+  test:
+    dir: ./packages/movernance
+    cmds:
+      - sui move test
+    sources:
+      - sources/**/*.move
+      - tests/**/*.move
+      - Move.toml
+  demo:
+    deps:
+      - build
+    cmds:
+      - yarn ts-node demo/demo.ts
+    sources:
+      - demo/*.ts
+      - .env

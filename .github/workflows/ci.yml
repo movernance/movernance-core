@@ -1,0 +1,37 @@
+name: ci
+
+on: ["push", "pull_request", "workflow_dispatch"]
+
+env:
+  VERSION: sui-v1.1.1
+  REQUEST_SUI: true
+
+jobs:
+  test_and_demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache Binaries and move deps
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.move
+            ~/bin
+            **/node_modules
+          key: ${{ runner.os }}-cache-${{ env.VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-cache-
+      - run: echo "${HOME}/bin" >> $GITHUB_PATH
+      - name: install sui bin
+        run: |
+          mkdir -p ~/bin
+          wget https://github.com/MystenLabs/sui/releases/download/${{ env.VERSION }}/sui -O ~/bin/sui
+          chmod +x ~/bin/sui
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Install Task
+        uses: arduino/setup-task@v1
+      - run: task test
+      - run: yarn install
+      - run: cp .env.example .env
+      - run: task demo

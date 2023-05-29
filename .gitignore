@@ -1,0 +1,10 @@
+sui.log.*
+.env
+build
+output.bpl
+.coverage_*
+.trace
+boilerplate
+.task/
+node_modules/
+.idea/
