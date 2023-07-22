@@ -51,6 +51,19 @@ async function publishMovernance(): Promise<AppMeta> {
   };
 }
 
+async function waitUntilTime(targetTime: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const currentTime = new Date();
+    const timeDifference = targetTime - currentTime.getTime();
+
+    if (timeDifference <= 0) {
+      resolve(); // Target time has already passed
+    } else {
+      setTimeout(resolve, timeDifference); // Wait until target time
+    }
+  });
+}
+
 async function interact_token_gov(params: AppMeta) {
   const { packageId, spaceStoreId } = params;
   // === create space
@@ -107,6 +120,8 @@ async function interact_token_gov(params: AppMeta) {
     signer
   );
   tx = prepareAmountRes.tx;
+  const startTime = Date.now();
+  const endTime = startTime + 10 * 1000;
   tx.moveCall({
     target: `${packageId}::movernance::create_token_gov_proposal`,
     typeArguments: [proposeCoinType, voteCoinType],
@@ -115,8 +130,8 @@ async function interact_token_gov(params: AppMeta) {
       prepareAmountRes.txCoin,
       tx.pure("example proposal"),
       tx.pure("example proposal body"),
-      tx.pure(Date.now()), // start from now
-      tx.pure(Date.now() + 86400 * 1000), // one day later
+      tx.pure(startTime), // start from now
+      tx.pure(endTime),
       tx.pure("10"),
       tx.pure(CLOCK_ADDR),
     ],
@@ -195,6 +210,33 @@ async function interact_token_gov(params: AppMeta) {
   });
   const addRewardTxn = await sendTx(tx, signer);
   console.log("addRewardTxn", JSON.stringify(addRewardTxn, null, 2));
+  // ---- withdraw
+  const addr = await signer.getAddress();
+  // get all token votes
+  const tokenVotes = await provider.getOwnedObjects({
+    owner: addr,
+    filter: {
+      StructType: `${packageId}::movernance::TokenVote<${voteCoinType}>`,
+    }
+  })
+  console.log(`tokenVotes: ${JSON.stringify(tokenVotes, null, 2)}`);
+  const tokenVoteIds = tokenVotes.data.map(vote => vote.data!.objectId);
+  // withdraw all token votes
+  tx = new TransactionBlock();
+  for (const tokenVoteId of tokenVoteIds) {
+    tx.moveCall({
+      target: `${packageId}::movernance::withdraw_vote_token`,
+      typeArguments: [proposeCoinType, voteCoinType],
+      arguments: [
+        tx.object(proposalId),
+        tx.object(tokenVoteId),
+        tx.pure(CLOCK_ADDR),
+      ],
+    })
+  }
+  await waitUntilTime(endTime + 1000);
+  const withdrawVoteTokenTxn = await sendTx(tx, signer);
+  console.log("withdrawVoteTokenTxn", JSON.stringify(withdrawVoteTokenTxn, null, 2));
 }
 
 async function get_user_nfts(addr: string, structType: string, n: number): Promise<string[]> {
@@ -283,6 +325,8 @@ async function interact_nft_gov(params: AppMeta) {
   // create proposal
   const proposeThreshold = parseInt((spaceObj.data!.content as any).fields.propose_threshold);
   let nfts = await get_user_nfts(addr, proposeNftType, proposeThreshold);
+  const startTime = Date.now();
+  const endTime = startTime + 10 * 1000;
   tx = new TransactionBlock();
   tx.moveCall({
     target: `${packageId}::movernance::create_nft_gov_proposal`,
@@ -292,8 +336,8 @@ async function interact_nft_gov(params: AppMeta) {
       tx.makeMoveVec({ objects: nfts.map(nft_id => tx.object(nft_id)) }),
       tx.pure("example proposal"),
       tx.pure("example proposal body"),
-      tx.pure(Date.now()), // start from now
-      tx.pure(Date.now() + 86400 * 1000), // one day later
+      tx.pure(startTime), // start from now
+      tx.pure(endTime),
       tx.pure(2),
       tx.pure(CLOCK_ADDR),
     ],
@@ -368,6 +412,32 @@ async function interact_nft_gov(params: AppMeta) {
   });
   const addRewardTxn = await sendTx(tx, signer);
   console.log("addRewardTxn", JSON.stringify(addRewardTxn, null, 2));
+  // ---- withdraw
+  // get all nft votes
+  const nftVotes = await provider.getOwnedObjects({
+    owner: addr,
+    filter: {
+      StructType: `${packageId}::movernance::NftVote<${voteNftType}>`,
+    }
+  })
+  console.log(`tokenVotes: ${JSON.stringify(nftVotes, null, 2)}`);
+  const nftVoteIds = nftVotes.data.map(vote => vote.data!.objectId);
+  // withdraw all nft votes
+  tx = new TransactionBlock();
+  for (const nftVoteId of nftVoteIds) {
+    tx.moveCall({
+      target: `${packageId}::movernance::withdraw_vote_nfts`,
+      typeArguments: [proposeNftType, voteNftType],
+      arguments: [
+        tx.object(proposalId),
+        tx.object(nftVoteId),
+        tx.pure(CLOCK_ADDR),
+      ],
+    })
+  }
+  await waitUntilTime(endTime + 1000);
+  const withdrawNftTokenTxn = await sendTx(tx, signer);
+  console.log("withdrawNftTokenTxn", JSON.stringify(withdrawNftTokenTxn, null, 2));
 }
 
 function extractTokens(
