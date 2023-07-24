@@ -1,0 +1,10 @@
+[package]
+name = "comments"
+version = "1.0.0"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "sui-v1.1.1" }
+
+[addresses]
+comments = "0x0"
+sui =  "0x2"

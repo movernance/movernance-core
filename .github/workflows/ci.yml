@@ -35,3 +35,4 @@ jobs:
       - run: yarn install
       - run: cp .env.example .env
       - run: task demo
+      - run: task demo-comments

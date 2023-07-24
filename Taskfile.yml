@@ -26,3 +26,26 @@ tasks:
     sources:
       - demo/*.ts
       - .env
+  build-comments:
+    dir: ./packages/comments
+    cmds:
+      - sui move build
+    sources:
+      - sources/**/*.move
+      - Move.toml
+  test-comments:
+    dir: ./packages/comments
+    cmds:
+      - sui move test
+    sources:
+      - sources/**/*.move
+      - tests/**/*.move
+      - Move.toml
+  demo-comments:
+    deps:
+      - build-comments
+    cmds:
+      - yarn ts-node demo/comments.ts
+    sources:
+      - demo/*.ts
+      - .env
